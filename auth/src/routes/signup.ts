@@ -1,6 +1,8 @@
 import express, { Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
-import { User } from '../models/user'; 
+import jwt from 'jsonwebtoken';
+
+import { User } from '../models/user';
 import { RequestValidationError } from '../errors/request-validation-error';
 import { BadRequestError } from '../errors/bad-request-error';
 
@@ -20,7 +22,7 @@ router.post(
   async (req: Request, res: Response) => {
     const errors = validationResult(req);
 
-    if(!errors.isEmpty()) {
+    if (!errors.isEmpty()) {
       throw new RequestValidationError(errors.array());
     }
 
@@ -28,16 +30,28 @@ router.post(
 
     const existingUser = await User.findOne({ email });
 
-    if(existingUser) {
-      throw new BadRequestError('Email already in use');
+    if (existingUser) {
+      throw new BadRequestError('Email in use');
     }
 
-    const user = User.build({
-      email,
-      password
-    })
+    const user = User.build({ email, password });
     await user.save();
-    res.status(201).send(user)
+
+    // Generate JWT
+    const userJwt = jwt.sign(
+      {
+        id: user.id,
+        email: user.email
+      },
+      'asdf'
+    );
+
+    // Store it on session object
+    req.session = {
+      jwt: userJwt
+    };
+
+    res.status(201).send(user);
   }
 );
 
