@@ -6,20 +6,25 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { signupSchema, TSignupSchema } from '@/lib/types'
+import { CustomError } from "@/components/ui/customError";
+import { signupSchema, TSignupSchema } from '@/lib/types';
+import useRequest from '@/hooks/useRequest';
 
 export default function SignupComponent() {
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<TSignupSchema>({
+  const { register, handleSubmit, setError, formState: { errors, isSubmitting } } = useForm<TSignupSchema>({
     resolver: zodResolver(signupSchema),
   });
 
+  const { makeRequest, loading, data } = useRequest({
+    url: '/api/users/signup',
+    method: 'post',
+    onSetError: setError
+});
+
   const onSubmit = async (data: TSignupSchema) => {
-    const response = await axios.post('/api/users/signup', {
-      email: data.email,
-      password: data.password
-    });
-    console.log(response.data) 
+    await makeRequest({ body: data });
   };
+  console.log(data)
 
   return (
     <div className="flex items-center justify-center min-h-screen p-4">
@@ -33,17 +38,17 @@ export default function SignupComponent() {
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input id="email" type="email" placeholder="me@example.com" {...register("email")} />
-              {errors.email && <span className="text-red-500">{errors.email.message?.toString()}</span>}
+              {errors.email && <CustomError message={errors.email.message?.toString()}/>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <Input id="password" type="password" {...register("password")} />
-              {errors.password && <span className="text-red-500">{errors.password.message?.toString()}</span>}
+              {errors.password && <CustomError message={errors.password.message?.toString()}/>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="confirm-password">Confirm Password</Label>
               <Input id="confirm-password" type="password" {...register("confirmPassword")} />
-              {errors.confirmPassword && <span className="text-red-500">{errors.confirmPassword.message?.toString()}</span>}
+              {errors.confirmPassword && <CustomError message={errors.confirmPassword.message?.toString()}/>}
             </div>
             <Button className="w-full" type="submit">Register</Button>
           </form>
