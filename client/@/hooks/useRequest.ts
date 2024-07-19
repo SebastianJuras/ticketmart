@@ -1,40 +1,39 @@
-import axios from 'axios';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
+import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
 
-export default function useRequest(options) {
-    const [data, setData] = useState(null);
-    const [loading, setLoading] = useState(false);
-    const [errors, setErrors] = useState(null);
-
-    const { url, method = 'get', body = {}, onSetError } = options;
-
-    const makeRequest = async (p0: { body: { email?: string; password?: string; confirmPassword?: string; }; }) => {
-        setLoading(true);
-        setErrors(null);
-        try {
-            const response = await axios({
-                method: method,
-                url: url,
-                data: body
-            });
-            setData(response.data);
-            setLoading(false);
-            return response.data;  
-        } catch (err) {
-            setLoading(false);
-            if (err.response && err.response.data && err.response.data.errors) {
-                const extractedErrors = err.response.data.errors;
-                setErrors(extractedErrors);
-                if (onSetError) {
-                    extractedErrors.forEach(error => {
-                        if (error.field && error.message) {
-                            onSetError(error.field, { type: "manual", message: error.message });
-                        }
-                    });
-                }
-            }
-        }
-    };
-
-    return { makeRequest, data, loading, errors };
+interface UseRequestProps<T> {
+  url: string;
+  method: 'get' | 'post' | 'put' | 'delete' | 'patch';
+  onSuccess?: (data: T) => void;
+  onError?: (error: any) => void;
 }
+
+export const useRequest = <T = any>({ url, method, onSuccess, onError }: UseRequestProps<T>) => {
+  const [data, setData] = useState<T | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<any>(null);
+
+  const doRequest = useCallback(async (body: any = {}, config: AxiosRequestConfig = {}) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response: AxiosResponse<T> = await axios[method](url, body, config);
+      setData(response.data);
+
+      if (onSuccess) {
+        onSuccess(response.data);
+      }
+    } catch (err) {
+      setError(err);
+
+      if (onError) {
+        onError(err);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [url, method, onSuccess, onError]);
+
+  return { doRequest, data, loading, error };
+};
